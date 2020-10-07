@@ -1,0 +1,623 @@
+<!--
+	Matt Rallo
+	Partner: Anthony Giamino
+	9/13/17
+	Homework 3
+	
+	What each function in the program does is displayed above each function in 
+	a comment. Instead of making a marker at a x and y location, I instead created 
+	each marker as an object that has a x, y, and color attribute. Making each marker
+	an object reduced a lot of code. Then once the game started I sent each object to a function to either draw, reset, change location, etc. 
+	
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<title>Homework 3</title>
+<style>
+	body {
+		background: #F1F1F1;
+	}
+
+	.content {
+		max-width: 1500px;
+		margin: auto;
+		background: white;
+		padding: 15px;
+		text-align: center;
+	}
+	.information {
+		width: 50%;
+		margin: auto;
+		background-color: #F7F6F6;
+		
+	}
+	.button {
+		background-color: #4CAF50; 
+		border: none;
+		color: white;
+		padding: 15px 32px;
+		text-align: center;
+		text-decoration: none;
+		display: inline-block;
+		font-size: 16px;
+		margin: 4px 2px;
+		cursor: pointer;
+	}
+	.speed {
+		background-color: #7000a5; 
+		border: none;
+		color: white;
+		padding: 15px 32px;
+		text-align: center;
+		text-decoration: none;
+		display: inline-block;
+		font-size: 16px;
+		margin: 4px 2px;
+	}
+	table {
+		width: 500;
+		margin: auto;
+	}
+	th, td {
+		text-align: left;
+		padding: 8px;
+	}
+	tr:nth-child(even){background-color: #f2f2f2}
+	th {
+		background-color: #4CAF50;
+	}
+	
+</style>
+</head>
+<body>
+
+<div class="content">
+	<h1>A Pretty Strange Game</h1>
+	<div class="information">
+		<h2>How to Play:</h2>
+		<p>
+			To play the game press the "Play Game" button. Once started two markers will start moving in random directions. The goal of each marker is to get to it's enemies home cell. The Red marker is trying to get to the upper right cell which is the blue square, the Blue marker's home cell. The Blue marker is trying to get to the lower right cell which is the red square, the Red marker's home cell. If one marker lands on the other, then the other marker is sent back to its starting point. For example: if the Blue marker lands on the Red marker then the Red marker is sent back to the lower left corner (its starting point). Once one of the markers reached its enemie's home cell that marker wins, then some information is displayed underneath the grid.
+		</p>	
+		<h2> Button Information:</h2>
+		<p>
+			You can display each cell's name on the grid by clicking the "Display Cell Names" button. Then you can click the button (now called "Don't Display Names") again to not display the names. After you have clicked the "Play Game" button, it turns into a "Reset Game" button and you can play the game over again or even restart the game.
+			Also once the "Play Game" or "Reset Game" is clicked some purple buttons pop up under the grid. These purple buttons control the speed of the game, and displays how fast the game is going in milliseconds. The purple button "<<" means to slow down the game. The purple button ">>" means to speed up the game.
+		</p>
+	</div>
+
+	<button class="button" style="background-color: #555555;" onclick="labelCells()" 
+	id="labelButt" value = 1>
+		Display Cell Names
+	</button>
+
+	<button class="button" onclick="playGame()" id="startGame">Play Game</button><br><br>
+	<canvas id="myCanvas" width="500" height="500" style="border:1px solid #000000;"></canvas>
+
+	<div id="toggleSpeed" style="display: none">
+		<button class="button" onclick="slowDown()" style="background-color: #7000a5;"><<</button>
+		<p class="speed" id="speedInfo"></p>
+		<button class="button" onclick="speedUp()" style="background-color: #7000a5;">>></button><br>
+	</div><br><br>
+
+	<div id="finalResults" style="display: none; margin: auto;">
+		<h1 id="results"></h1>
+		<h2 id="max"></h2>
+		<h2 id="total"></h2>
+		<h2 id="redTurns" style="color: #FF5959;"></h2>
+		<h2 id="blueTurns" style="color: #3CB0EC;"></h2>
+		<h2 id="redLands" style="color: #A30000;"></h2>
+		<h2 id="blueLands" style="color: #003AE7;"></h2>
+		<table id="cellData">
+			<tr>
+				<th>Cell Name</th>
+				<th style="background-color: #FF5959;">Red Touches</th>
+				<th style="background-color: #3CB0EC;">Blue Touches</th>
+				<th style="background-color: #e7e7e7;">Total Touches</th>
+			</tr>
+		</table>
+	</div>
+</div>
+
+
+<script>
+	//Canvas Variables
+    var canvas = document.getElementById("myCanvas");
+    var ctx = canvas.getContext("2d");
+
+	//row size and column size
+	var rows = 10;
+	var cols = 10;
+	
+	//Cell Vertical Span and Horitontal span (distance between lines)
+	verticalDistance = canvas.height/rows; //distance between row lines
+	horizontalDistance = canvas.width/cols; //distance between column lines
+
+	//offset for markers
+	var verticalOffset = verticalDistance/2; //should be 25 for 10 x 10 grid
+	var horizontalOffset = horizontalDistance/2; //should be 25 for 10 x 10 grid
+	
+	//call makeGrid() which draws lines onto the canvas that makes it look like a grid
+	makeGrid();
+	//call makeHomeCell() to make the red and blue markers' homes
+	makeHomeCell();
+
+	var gridArray; //array to keep track of number of touches per cell
+	var redGridArray; //array to keep track of red touches per cell
+	var blueGridArray; //array to keep track of blue touches per cell
+	
+	var moveInterval; //interval when the markers move (used in playGame())
+	var speed = 500; //speed is used in interval which measures in milliseconds
+	
+	//create Marker Objects with starting coordinates and colors
+	var RedMarker = {row: rows-1, column: 0, color: "#A30000"};
+	var BlueMarker = {row: 0, column: cols-1, color: "#003AE7"};
+
+	var winnerChk; //a check to see who won (used in displayData())
+	
+	//Draw the starting markers
+	drawMarker(RedMarker);
+	drawMarker(BlueMarker);
+	
+	var RedTurns = 0; //number of turns taken by Red marker
+	var BlueTurns = 0; //number of turns taken by Blue marker
+	var RedLands= 0; //number of times red marker landed on blue
+	var BlueLands= 0; //number of times blue marker landed on blue
+	
+	/***********************************************************
+		The Function makeGrid() just makes lines in the canvas
+		to make the canvas look like a grid 
+	***********************************************************/
+	function makeGrid(){	
+			//Rows
+			for (var i = 0; i <=  canvas.height; i += verticalDistance) {
+				ctx.moveTo(0, i);
+				ctx.lineTo(canvas.width, i);
+			}
+			//Columns
+			for (var i = 0; i <= canvas.width; i += horizontalDistance) {
+				ctx.moveTo(i, 0);
+				ctx.lineTo(i,  canvas.height);
+			}
+			//Draw
+			ctx.strokeStyle = "black";
+			ctx.lineWidth=2;
+			ctx.stroke();
+	} //ends function makeGrid()
+
+	/***********************************************************
+		The Function makeHomeCell() makes rectangles in the cells 
+		of where each marker is trying to land to win the game.
+		The Blue marker wants to land in the lower right cell located 
+		at cell (9, 9) which is a light red rectangle. The Red marker
+		wants to land in the upper right cell located at cell (0, 9)
+		which is a light blue rectangle.
+	***********************************************************/
+	function makeHomeCell(){
+		//make red marker's home
+		ctx.fillStyle = "#FF5959";
+		ctx.fillRect(450, 450, 50, 50);
+		ctx.stroke();
+	
+		//make blue marker's home
+		ctx.fillStyle = "#3CB0EC";
+		ctx.fillRect(450, 0, 50, 50);
+		ctx.stroke();
+	
+	
+	} //ends function makeHomeCell()
+	
+	/***********************************************************
+		The Function labelCells() either draws text to each cell 
+		or removes the text depening on the button. When the button is 
+		first pressed it draws text to each cell in the format of (row, column).
+		If the button is pressed again it "removes" or rather draws over the 
+		text that was previously written. I determine if the button was pressed 
+		or not by its value. Then you can keep pressing the button as much as you 
+		like to see the cell names or not.
+	***********************************************************/
+	function labelCells(){
+		//so we know button wants to display names
+		if(document.getElementById("labelButt").value == 1){
+			document.getElementById("labelButt").value = 2; //change button value
+			document.getElementById("labelButt").innerHTML="Don't Display Names";
+			//write text to cell
+			ctx.font = "10px Arial";
+			ctx.fillStyle = "#000000";			
+			
+			var x = 15; //x is x location in canvas
+			var y = 10; //y is y location in canvas
+			for(var i = 0; i < rows; i++){
+				x = 13; //go thirteen pixels to right
+				for(var j = 0; j < cols; j++){
+					ctx.fillText("("+i+", "+j+")", x, y);
+					x = x + 50; //add 50 which is distance between each line
+				}
+				y = y + 50; //add 50 which is also the distance
+			} //end for
+		} //end if
+		else{
+			//so we know button wants to not display names
+			document.getElementById("labelButt").value = 1; //change button value
+			document.getElementById("labelButt").innerHTML="Display Cell Names";
+			
+			//set text properties
+			ctx.font = "10px Arial";
+			ctx.fillStyle = "#FFFFFF";			
+			
+			var x = 15; //used as x coordinate of text
+			var y = 10; //used as y coordinate of text
+				//rewrite text as white to "remove" names
+				for(var i = 0; i < rows; i++){
+					x = 13;
+					for(var j = 0; j < cols; j++){
+						ctx.fillStyle = "#FFFFFF";//go back to white text
+
+						//to get pure white, have to draw over text 4 times 
+						ctx.fillText("("+i+", "+j+")", x, y);
+						ctx.fillText("("+i+", "+j+")", x, y);
+						ctx.fillText("("+i+", "+j+")", x, y);
+						ctx.fillText("("+i+", "+j+")", x, y);
+						
+						//when we need to draw over text in home cells
+						if(i == 0 && j == 9){
+							ctx.fillStyle = "#3CB0EC";
+							ctx.fillRect(x, y-8, 30, 10);
+						}
+						if(i == 9 && j == 9){
+							ctx.fillStyle = "#FF5959";
+							ctx.fillRect(x, y-8, 30, 10);
+						}
+						x = x + 50; //add to x
+					} //end inner for loop
+					y = y + 50; //add to y
+				} //end for
+		} //end else
+	} //ends function labelCells()
+
+	/***********************************************************
+		The Function playGame() starts the game. It first alters the html 
+		tags. Then it initializes the speed, arrays, Markers, turns, etc. 
+		I do this so if button is pressed again a new Game can start with new 
+		data. I also use clearInterval() to stop previous interval in case button 
+		was pressed again.Then I used setInterval() to loop each move at a 
+		certain speed.
+	***********************************************************/
+	function playGame(){
+		document.getElementById("finalResults").style.display = "none"; //hide cell data
+		document.getElementById("startGame").innerHTML = "Reset Game"; //change button name
+		speed = 500;
+		document.getElementById("toggleSpeed").style.display = "block"; //display speed 
+		document.getElementById("speedInfo").innerHTML = "Speed = " + speed + "ms"; 
+		
+		//We will make our grid match the model. (x,y) (row,col)
+        //(0,0) (0,1) (0,2)...
+        //(1,0) (1,1) (1,2)...
+        //(2,0) (2,1) (2,2)...
+        
+		//Initialize Grid Array which keeps track of touches per cell
+        gridArray = new Array(rows);
+        for (var row = 0; row < rows; row++) {
+            gridArray[row] = new Array(cols);
+            for(var col = 0; col < cols; col++){
+                gridArray[row][col] = 0;
+            }
+        }
+		
+		//Initialize REd Grid Array which keeps track of red touches per cell
+        redGridArray = new Array(rows);
+        for (var row = 0; row < rows; row++) {
+            redGridArray[row] = new Array(cols);
+            for(var col = 0; col < cols; col++){
+                redGridArray[row][col] = 0;
+            }
+        }
+		
+		//Initialize Blue Grid Array which keeps track of blue touches per cell
+        blueGridArray = new Array(rows);
+        for (var row = 0; row < rows; row++) {
+            blueGridArray[row] = new Array(cols);
+            for(var col = 0; col < cols; col++){
+                blueGridArray[row][col] = 0;
+            }
+        }
+	
+		//Reset starting marker locations in case button is pressed again
+		removeMarker(RedMarker);
+		removeMarker(BlueMarker);
+		RedMarker = {row: rows-1, column: 0, color: "#A30000"};
+		BlueMarker = {row: 0, column: cols-1, color: "#003AE7"};
+		
+		RedTurns = 0;
+		BlueTurns = 0;
+		RedLands = 0;
+		BlueLands = 0;
+		
+		//Draw the starting markers
+		drawMarker(RedMarker);
+		drawMarker(BlueMarker);
+		
+		//touch the initial starting spots of the two markers
+		gridArray[RedMarker.row][RedMarker.column] += 1;	
+		gridArray[BlueMarker.row][BlueMarker.column] += 1;	
+		redGridArray[RedMarker.row][RedMarker.column] += 1;	
+		blueGridArray[BlueMarker.row][BlueMarker.column] += 1;	
+		
+		//Begin Game Loop
+		//stop previous interval if played before
+		clearInterval(moveInterval);
+		moveInterval = setInterval(moveMarkers, speed);//ends setInterval
+	
+	} //ends function playGame() 
+	
+	/***********************************************************
+		The Function moveMarkers() starts drawing the markers at each cell.
+		I use removeMarker() to remove previous marker, I use getDirections()
+		to change the x and y coordinates of each marker, then I just call drawMarker()
+		to draw each marker to the canvas. After I add to touches and turns. 
+		Lastly I check to see if marker landed on another marker or if that marker won.
+		If a marker lands on another marker I just change the coordinates of the other 
+		marker and redraw it. If a marker wins I display the result in HTML tags by calling
+		displayData();
+	***********************************************************/
+	function moveMarkers(){
+		//move RED marker
+		removeMarker(RedMarker);
+		console.log("Red");
+		getDirections(RedMarker);
+		drawMarker(RedMarker);
+		RedTurns++; //add turn to red
+		redGridArray[RedMarker.row][RedMarker.column]+=1;
+		
+		//see if red landed on blue
+		if(RedMarker.row == BlueMarker.row && RedMarker.column == BlueMarker.column){
+			//if red did land on blue, send blue back to it's starting point
+			RedLands++;
+			BlueMarker.row = 0;
+			BlueMarker.column = cols-1;
+			removeMarker(BlueMarker);
+			drawMarker(BlueMarker);
+		}
+	
+		//see if red won
+		if(RedMarker.row == 0 && RedMarker.column == 9){
+			console.log("Red Wins!!!");
+			//get rid of speed controls so when clicked game doesn't continue
+			document.getElementById("toggleSpeed").style.display = "none";
+			winner = 0; //meands red marker won
+			displayData(); //displays all data
+			clearInterval(moveInterval); //stop interval
+		}
+		
+		//move BLUE marker
+		removeMarker(BlueMarker);
+		console.log("Blue");
+		getDirections(BlueMarker);
+		drawMarker(BlueMarker);
+		BlueTurns++; //add turn to blue
+		blueGridArray[BlueMarker.row][BlueMarker.column]+=1;
+		
+		//see if blue landed on red
+		if(BlueMarker.row == RedMarker.row && BlueMarker.column == RedMarker.column){
+			//if blue did land on blue, send red back to it's starting point
+			BlueLands++;
+			RedMarker.row = rows-1;
+			RedMarker.column = 0;
+			removeMarker(RedMarker);
+			drawMarker(RedMarker);
+		}
+		
+		//see if blue won
+		if(BlueMarker.row == 9 && BlueMarker.column == 9){
+			console.log("Blue Wins!!!");
+			//get rid of speed controls so when clicked game doesn't continue
+			document.getElementById("toggleSpeed").style.display = "none";
+			winner = 1; //means blue marker won
+			displayData(); //displays all data
+			clearInterval(moveInterval); //stop interval
+		}
+		
+		//if go over 1000000 then stop game!
+		if(RedTurns > 1000000 || BlueTurns > 1000000){
+			document.getElementById("results").innerHTML = "YOU TOOK OVER 1 MILLION STEPS! <br>YOU RAN OUT OF STEPS!";
+			clearInterval(moveInterval);
+			return;
+		}
+	}//ends function moveMarkers()
+
+	/***********************************************************
+		The Function getDirections() gets a random direction and 
+		a random number of steps. Then a switch statement determines
+		how to change the coordinates based on the direction randomly 
+		choosen.
+	***********************************************************/
+	function getDirections(currentMarker){
+		var Direction = Math.floor(Math.random() * 4); //0-3
+        var numberSteps = Math.floor(Math.random() * 3); //0-2
+		
+		switch(Direction){
+			case 0: //Down
+				console.log('	down ' + numberSteps);
+				if(currentMarker.row+numberSteps < rows){
+					currentMarker.row += numberSteps;
+					gridArray[currentMarker.row][currentMarker.column] += 1;
+					break;
+				}
+				else{
+					gridArray[currentMarker.row][currentMarker.column] += 1;
+					break;
+				}
+				
+			case 1: //Up
+				console.log('	up ' + numberSteps);;
+				if(currentMarker.row-numberSteps >= 0){
+					currentMarker.row -= numberSteps;
+					gridArray[currentMarker.row][currentMarker.column] += 1;
+					break;
+				}
+				else{
+					gridArray[currentMarker.row][currentMarker.column] += 1;
+					break;
+				}
+			
+			case 2: //Left
+				console.log('	left ' + numberSteps);;
+				if(currentMarker.column-numberSteps >= 0){
+					currentMarker.column -= numberSteps;
+					gridArray[currentMarker.row][currentMarker.column] += 1;
+					break;
+				}
+				else{
+					gridArray[currentMarker.row][currentMarker.column] += 1;
+					break;
+				}
+				
+			case 3: //Right
+				console.log('	right ' + numberSteps);
+				if(currentMarker.column+numberSteps < cols){
+					currentMarker.column += numberSteps;
+					gridArray[currentMarker.row][currentMarker.column] += 1;
+					break;
+				}
+				else{
+					gridArray[currentMarker.row][currentMarker.column] += 1;
+					break;
+				}
+        }//ends switch	
+	} //ends function getDirections()
+	
+	/***********************************************************
+		The Function drawMarker() just draws a circle to the canvas based 
+		on what marker object was received.
+	***********************************************************/
+	function drawMarker(currentMarker){
+		var xLocation = horizontalOffset + (horizontalDistance * currentMarker.column);
+		var yLocation = verticalOffset + (verticalDistance * currentMarker.row);
+		ctx.fillStyle = currentMarker.color;
+		
+		ctx.beginPath();
+		ctx.arc(xLocation, yLocation, 10, 0, 2 * Math.PI);
+		ctx.fill();
+		ctx.stroke();	
+	}//ends function drawMarker()
+	
+	/***********************************************************
+		The Function removeMarker() just "removes" the previous 
+		circle so you can see what cell we are on.
+	***********************************************************/
+    function removeMarker(currentMarker){
+        var xLocation = horizontalOffset + (horizontalDistance * currentMarker.column);
+		var yLocation = verticalOffset + (verticalDistance * currentMarker.row);
+		
+		//first check if in home cells or not, then just draw over it
+		if(currentMarker.row == 9 && currentMarker.column == 9){
+			ctx.fillStyle = "#FF5959";
+			ctx.beginPath();
+			ctx.arc(xLocation, yLocation, 12, 0, 2 * Math.PI);
+			ctx.fill();
+		}
+		else if(currentMarker.row == 0 && currentMarker.column == 9){
+			ctx.fillStyle = "#3CB0EC";
+			ctx.beginPath();
+			ctx.arc(xLocation, yLocation, 12, 0, 2 * Math.PI);
+			ctx.fill();
+		}
+		else {
+			ctx.fillStyle = "#FFFFFF";
+			ctx.beginPath();
+			ctx.arc(xLocation, yLocation, 12, 0, 2 * Math.PI);
+			ctx.fill();
+		}
+    } //ends fuction removeMarker()
+	
+	/***********************************************************
+		The Functions speedUp() and slowDown() just changes the 
+		global speed variable. It displays the speed in a HTML tag.
+		Then it calls clearInterval() to stop previous interval and makes
+		a new interval based on the new speed.
+	***********************************************************/
+	function speedUp(){
+		if(speed > 50){
+			speed -= 50;
+			document.getElementById("speedInfo").innerHTML = "Speed = " + speed + "ms"; 
+			clearInterval(moveInterval);
+			moveInterval = setInterval(moveMarkers, speed);//ends setInterval
+		}
+		else {
+			speed = 15; 
+			document.getElementById("speedInfo").innerHTML = "Speed = " + speed + "ms"; 
+			clearInterval(moveInterval);
+			moveInterval = setInterval(moveMarkers, speed);//ends setInterval
+		}
+	}
+	function slowDown(){
+		speed += 50;
+		document.getElementById("speedInfo").innerHTML = "Speed = " + speed + "ms"; 
+		clearInterval(moveInterval);
+		moveInterval = setInterval(moveMarkers, speed);//ends setInterva
+	}
+	
+	/***********************************************************
+		The Function displayData() just does what it says. It 
+		displays the final results and cell touch information, etc.
+	***********************************************************/
+	function displayData(){
+		if(winner == 0){ //Red Won
+			var win = document.getElementById("results");
+			win.style.color = "#A30000";
+			win.innerHTML = "Red is the WINNER!!!";
+		}
+		if(winner == 1){ //Blue Won
+			var win = document.getElementById("results");
+			win.style.color = "#003AE7";
+			win.innerHTML = "Blue is the WINNER!!!";
+		}
+	
+		var MAX = 0;
+		var maxCellRow;
+		var maxCellColumn;
+		var TOTAL = 0;
+		
+		//display hidden div tag when we have a winner
+		document.getElementById("finalResults").style.display = "block";
+		var table = document.getElementById("cellData");
+		var row;
+		
+		//display Cell Data
+		for(var i = 0; i < rows; i++){
+			for(var j = 0; j < cols; j++){
+				row = table.insertRow(-1);
+				var cellName = row.insertCell(0);
+				var redTouchCell = row.insertCell(1);
+				var blueTouchCell = row.insertCell(2);
+				var totalTouchesCell = row.insertCell(3);
+				
+				cellName.innerHTML = "(" + i + ", " + j + ")";
+				redTouchCell.innerHTML = redGridArray[i][j];
+				blueTouchCell.innerHTML = blueGridArray[i][j];
+				totalTouchesCell.innerHTML = gridArray[i][j]; //number of touches/number of markers
+				
+				TOTAL += gridArray[i][j];
+				
+				if(MAX < gridArray[i][j]){ //get maximum
+					MAX = gridArray[i][j];
+					maxCellRow = i; //get cell location data
+					maxCellColumn = j;
+				}
+			}
+		}
+			
+		document.getElementById("max").innerHTML = "Cell (" + maxCellRow + ", " + maxCellColumn + ") has the most number of touches of " + MAX;
+	
+		document.getElementById("total").innerHTML = "Average Number of times a cell was touched is " + TOTAL/100;
+		
+		document.getElementById("redTurns").innerHTML = "Red Moved " + RedTurns + " time(s)";
+		document.getElementById("blueTurns").innerHTML = "Blue Moved " + BlueTurns + " time(s)";
+		
+		document.getElementById("redLands").innerHTML = "Red sent Blue back home " + RedLands + " time(s)!";
+		document.getElementById("blueLands").innerHTML = "Blue sent Red back to lower left corner " + BlueLands + " time(s)!";
+	} //ends function displayData()
+	
+</script>
+</body>
+</html> 

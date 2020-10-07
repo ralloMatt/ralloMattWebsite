@@ -1,0 +1,50 @@
+body {
+    
+    background-image: url("pics/background.jpg");
+    background-repeat: no-repeat, repeat;
+   
+    height: 100%;
+    margin: 0;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    
+    padding-top: 100px;
+    padding-bottom: 100px;
+    padding-left: 50px;
+    padding-right: 50px;
+}
+
+h1{
+    text-align:center;
+    padding-bottom: 25px;
+    color: white;
+}
+
+hr {
+    border-color: goldenrod;
+    width: 50%;
+}
+
+.navbar{
+    background: none;
+    font-size: 20px;
+}
+
+.centerMe{
+    text-align: center;
+    width: 50%;
+}
+
+h2{
+    color: white;
+}
+
+h3{
+    color: white;
+}
+
+p{
+    color: white;
+    
+    
+}
